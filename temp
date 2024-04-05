@@ -12,11 +12,28 @@ public class ResultSetLogger {
             ResultSetMetaData metaData = resultSet.getMetaData();
             int columnCount = metaData.getColumnCount();
 
-            // Get maximum display width for each column name
+            // Get maximum display width for each column name and data
             int[] columnWidths = new int[columnCount];
             for (int i = 1; i <= columnCount; i++) {
-                columnWidths[i - 1] = Math.max(metaData.getColumnName(i).length(), metaData.getColumnDisplaySize(i));
+                int columnNameLength = metaData.getColumnName(i).length();
+                int maxColumnDataLength = 0;
+                resultSet.beforeFirst(); // Reset cursor to first row
+                while (resultSet.next()) {
+                    int columnDataLength = resultSet.getString(i).length();
+                    if (columnDataLength > maxColumnDataLength) {
+                        maxColumnDataLength = columnDataLength;
+                    }
+                }
+                columnWidths[i - 1] = Math.max(columnNameLength, maxColumnDataLength);
             }
+
+            // Log separator line above header
+            StringBuilder topSeparatorBuilder = new StringBuilder();
+            for (int i = 1; i <= columnCount; i++) {
+                topSeparatorBuilder.append("+").append("-".repeat(columnWidths[i - 1] + 2));
+            }
+            topSeparatorBuilder.append("+");
+            logger.info(topSeparatorBuilder.toString());
 
             // Log column names with padding
             StringBuilder headerBuilder = new StringBuilder();
@@ -26,7 +43,7 @@ public class ResultSetLogger {
             headerBuilder.append("|");
             logger.info(headerBuilder.toString());
 
-            // Log separator line
+            // Log separator line below header
             StringBuilder separatorBuilder = new StringBuilder();
             for (int i = 1; i <= columnCount; i++) {
                 separatorBuilder.append("+").append("-".repeat(columnWidths[i - 1] + 2));
@@ -35,6 +52,7 @@ public class ResultSetLogger {
             logger.info(separatorBuilder.toString());
 
             // Log data rows with padding
+            resultSet.beforeFirst(); // Reset cursor to first row
             while (resultSet.next()) {
                 StringBuilder rowBuilder = new StringBuilder();
                 for (int i = 1; i <= columnCount; i++) {
