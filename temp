@@ -1,0 +1,55 @@
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+public class ResultSetLogger {
+    private static final Logger logger = LogManager.getLogger(ResultSetLogger.class);
+
+    public static void logResultSet(ResultSet resultSet) {
+        try {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            // Get maximum display width for each column
+            int[] columnWidths = new int[columnCount];
+            for (int i = 1; i <= columnCount; i++) {
+                columnWidths[i - 1] = metaData.getColumnDisplaySize(i);
+            }
+
+            // Log column names with padding
+            StringBuilder headerBuilder = new StringBuilder();
+            for (int i = 1; i <= columnCount; i++) {
+                headerBuilder.append("| ").append(padString(metaData.getColumnName(i), columnWidths[i - 1])).append(" ");
+            }
+            headerBuilder.append("|");
+            logger.info(headerBuilder.toString());
+
+            // Log separator line
+            StringBuilder separatorBuilder = new StringBuilder();
+            for (int i = 1; i <= columnCount; i++) {
+                separatorBuilder.append("+").append("-".repeat(columnWidths[i - 1] + 2));
+            }
+            separatorBuilder.append("+");
+            logger.info(separatorBuilder.toString());
+
+            // Log data rows with padding
+            while (resultSet.next()) {
+                StringBuilder rowBuilder = new StringBuilder();
+                for (int i = 1; i <= columnCount; i++) {
+                    rowBuilder.append("| ").append(padString(resultSet.getString(i), columnWidths[i - 1])).append(" ");
+                }
+                rowBuilder.append("|");
+                logger.info(rowBuilder.toString());
+            }
+        } catch (SQLException e) {
+            logger.error("Error logging ResultSet: " + e.getMessage());
+        }
+    }
+
+    // Method to pad a string with spaces to a specified width
+    private static String padString(String str, int width) {
+        return String.format("%-" + width + "s", str);
+    }
+}
