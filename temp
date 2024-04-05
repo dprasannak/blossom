@@ -9,6 +9,11 @@ public class ResultSetLogger {
 
     public static void logResultSet(ResultSet resultSet) {
         try {
+            // Ensure the ResultSet is scrollable
+            if (!resultSet.isBeforeFirst()) {
+                resultSet.beforeFirst();
+            }
+
             ResultSetMetaData metaData = resultSet.getMetaData();
             int columnCount = metaData.getColumnCount();
 
