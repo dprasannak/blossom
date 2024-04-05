@@ -12,10 +12,10 @@ public class ResultSetLogger {
             ResultSetMetaData metaData = resultSet.getMetaData();
             int columnCount = metaData.getColumnCount();
 
-            // Get maximum display width for each column
+            // Get maximum display width for each column name
             int[] columnWidths = new int[columnCount];
             for (int i = 1; i <= columnCount; i++) {
-                columnWidths[i - 1] = metaData.getColumnDisplaySize(i);
+                columnWidths[i - 1] = Math.max(metaData.getColumnName(i).length(), metaData.getColumnDisplaySize(i));
             }
 
             // Log column names with padding
