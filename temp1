@@ -1,0 +1,70 @@
+import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.*;
+
+import java.awt.*;
+
+public class TextSearchExample {
+
+    public static void main(String[] args) {
+        JFrame frame = new JFrame("Text Search Example");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(400, 300);
+
+        JTextField searchField = new JTextField(20);
+        JTextPane textPane = new JTextPane();
+        textPane.setText("This is some sample text to search within. Try typing words like 'sample' or 'text' to see the highlighting in action.");
+
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                searchAndHighlight(textPane, searchField.getText());
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                searchAndHighlight(textPane, searchField.getText());
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                searchAndHighlight(textPane, searchField.getText());
+            }
+        });
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(new JLabel("Search:"), BorderLayout.WEST);
+        panel.add(searchField, BorderLayout.CENTER);
+
+        frame.add(panel, BorderLayout.NORTH);
+        frame.add(new JScrollPane(textPane), BorderLayout.CENTER);
+
+        frame.setVisible(true);
+    }
+
+    private static void searchAndHighlight(JTextPane textPane, String searchText) {
+        Highlighter highlighter = textPane.getHighlighter();
+        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(Color.YELLOW);
+        
+        // Remove previous highlights
+        highlighter.removeAllHighlights();
+
+        if (searchText.isEmpty()) {
+            return;
+        }
+
+        String text = textPane.getText();
+        int index = text.indexOf(searchText);
+
+        while (index >= 0) {
+            try {
+                int end = index + searchText.length();
+                highlighter.addHighlight(index, end, painter);
+                index = text.indexOf(searchText, end);
+            } catch (BadLocationException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
