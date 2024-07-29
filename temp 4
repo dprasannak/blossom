@@ -1,0 +1,76 @@
+import { TestBed } from '@angular/core/testing';
+import { YourComponent } from './your-component';
+import { BillingRuleService } from './billing-rule.service'; // Adjust the path to your service
+import { of } from 'rxjs';
+
+describe('YourComponent', () => {
+  let component: YourComponent;
+  let billingRuleService: jasmine.SpyObj<BillingRuleService>;
+
+  beforeEach(() => {
+    const billingRuleServiceSpy = jasmine.createSpyObj('BillingRuleService', ['getEditScreenData']);
+
+    TestBed.configureTestingModule({
+      providers: [
+        YourComponent,
+        { provide: BillingRuleService, useValue: billingRuleServiceSpy }
+      ]
+    });
+
+    component = TestBed.inject(YourComponent);
+    billingRuleService = TestBed.inject(BillingRuleService) as jasmine.SpyObj<BillingRuleService>;
+  });
+
+  describe('getBtcFromEditScreen', () => {
+    it('should return BTCs from edit screen data', () => {
+      // Mock edit screen data
+      const mockEditScreenData = {
+        billingRuleCoverage: {
+          billingPartyGroup: {
+            billToAccounts: [
+              { billingPartyCode: 'BTC001' },
+              { billingPartyCode: 'BTC002' }
+            ]
+          }
+        }
+      };
+
+      // Set the spy to return the mock data
+      billingRuleService.getEditScreenData.and.returnValue(mockEditScreenData);
+
+      // Call the method
+      const btcFromEditScreen = component.getBtcFromEditScreen();
+
+      // Assert the result
+      expect(btcFromEditScreen).toEqual(['BTC001', 'BTC002']);
+      expect(billingRuleService.getEditScreenData).toHaveBeenCalled();
+    });
+  });
+
+  describe('getBuFromEditScreen', () => {
+    it('should return unique BUs from edit screen data', () => {
+      // Mock edit screen data
+      const mockEditScreenData = {
+        billingRuleCoverage: {
+          businessUnitServiceOfferingGroup: {
+            businessUnitServiceOffering: [
+              { businessUnitCode: 'BU001' },
+              { businessUnitCode: 'BU002' },
+              { businessUnitCode: 'BU001/JBT' }
+            ]
+          }
+        }
+      };
+
+      // Set the spy to return the mock data
+      billingRuleService.getEditScreenData.and.returnValue(mockEditScreenData);
+
+      // Call the method
+      const buFromEditScreen = component.getBuFromEditScreen();
+
+      // Assert the result
+      expect(buFromEditScreen).toEqual(['BU001', 'BU002', 'JBT']);
+      expect(billingRuleService.getEditScreenData).toHaveBeenCalled();
+    });
+  });
+});
