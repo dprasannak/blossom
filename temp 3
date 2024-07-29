@@ -1,0 +1,91 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { YourComponent } from './your-component';
+import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+
+describe('YourComponent', () => {
+  let component: YourComponent;
+  let fixture: ComponentFixture<YourComponent>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [ReactiveFormsModule],
+      declarations: [YourComponent],
+      providers: [] // Add any necessary providers here
+    });
+
+    fixture = TestBed.createComponent(YourComponent);
+    component = fixture.componentInstance;
+
+    // Initialize form controls with default values
+    component.addBillingForm = new FormGroup({
+      bill2code: new FormControl([]),
+      buso: new FormControl([])
+    });
+
+    // Mock bUReferenceData
+    component.bUReferenceData = [
+      { label: 'Business1', value: { business: 'Business1' } },
+      { label: 'Business2', value: { business: 'Business2' } },
+      { label: 'Business3', value: { business: 'Business3' } }
+    ];
+
+    fixture.detectChanges();
+  });
+
+  it('should prepare btcData and bUData correctly with given form values', () => {
+    // Set form control values
+    component.addBillingForm.controls.bill2code.setValue([
+      { billCode: '(BTC123)' },
+      { billCode: '(BTC456)' },
+      { billCode: 'NO MATCH' }
+    ]);
+    component.addBillingForm.controls.buso.setValue([
+      { business: 'Business1' },
+      { business: 'Business2' }
+    ]);
+
+    // Spy on the service method
+    spyOn(component, 'checkIfBtcAndBuComboIsInRollOut');
+
+    // Call the method
+    component.prepareParamsWithBtcAndBuToCheckIfItIsInRollout();
+
+    // Assert btcData
+    expect(component.btcData).toEqual(['BTC123', 'BTC456', null]);
+
+    // Assert bUData
+    expect(component.bUData).toEqual(['Business1', 'Business2']);
+
+    // Assert businessUnits
+    expect(component.businessUnits).toEqual(['Business1', 'Business2']);
+
+    // Verify the service call
+    expect(component.checkIfBtcAndBuComboIsInRollOut).toHaveBeenCalledWith('BTC123,BTC456,null', 'Business1,Business2');
+  });
+
+  it('should use default values from getBtcFromEditScreen and getBuFromEditScreen if form controls are empty', () => {
+    // Mock methods that return default data
+    spyOn(component, 'getBtcFromEditScreen').and.returnValue(['BTC789']);
+    spyOn(component, 'getBuFromEditScreen').and.returnValue(['Business3']);
+    spyOn(component, 'checkIfBtcAndBuComboIsInRollOut');
+
+    // Ensure form controls are empty
+    component.addBillingForm.controls.bill2code.setValue([]);
+    component.addBillingForm.controls.buso.setValue([]);
+
+    // Call the method
+    component.prepareParamsWithBtcAndBuToCheckIfItIsInRollout();
+
+    // Assert btcData
+    expect(component.btcData).toEqual(['BTC789']);
+
+    // Assert bUData
+    expect(component.bUData).toEqual(['Business3']);
+
+    // Assert businessUnits
+    expect(component.businessUnits).toEqual(['Business3']);
+
+    // Verify the service call
+    expect(component.checkIfBtcAndBuComboIsInRollOut).toHaveBeenCalledWith('BTC789', 'Business3');
+  });
+});
