@@ -1,0 +1,71 @@
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { YourComponent } from './your-component';
+import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { of } from 'rxjs';
+
+describe('YourComponent', () => {
+  let component: YourComponent;
+  let fixture: ComponentFixture<YourComponent>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [ReactiveFormsModule],
+      declarations: [YourComponent],
+      providers: [] // Add any necessary providers here
+    });
+
+    fixture = TestBed.createComponent(YourComponent);
+    component = fixture.componentInstance;
+
+    // Initialize the form group
+    component.addBillingForm = new FormGroup({
+      bill2code: new FormControl([]),
+      buso: new FormControl([])
+    });
+
+    // Mock editScreenData with necessary structure
+    component.editScreenData = {
+      processRules: {
+        statementBillProcess: true
+      }
+    };
+
+    fixture.detectChanges();
+  });
+
+  it('should subscribe to form control value changes and call prepareParamsWithBtcAndBuToCheckIfItIsInRollout', () => {
+    // Spy on the method to check if it is called
+    spyOn(component, 'prepareParamsWithBtcAndBuToCheckIfItIsInRollout');
+
+    // Call the method to set up subscriptions
+    component.checkItBtc0rBuFormIsChanged();
+
+    // Simulate a value change in the bill2code control
+    component.addBillingForm.controls.bill2code.setValue([{ billCode: '(BTC123)' }]);
+
+    // Simulate a value change in the buso control
+    component.addBillingForm.controls.buso.setValue([{ business: 'Business1' }]);
+
+    // Check if prepareParamsWithBtcAndBuToCheckIfItIsInRollout was called twice
+    expect(component.prepareParamsWithBtcAndBuToCheckIfItIsInRollout).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not subscribe if statementBillProcess is not true', () => {
+    // Set editScreenData to not include statementBillProcess
+    component.editScreenData = {
+      processRules: {}
+    };
+
+    // Spy on the method to check if it is called
+    spyOn(component, 'prepareParamsWithBtcAndBuToCheckIfItIsInRollout');
+
+    // Call the method to set up subscriptions
+    component.checkItBtc0rBuFormIsChanged();
+
+    // Simulate a value change in the bill2code control
+    component.addBillingForm.controls.bill2code.setValue([{ billCode: '(BTC123)' }]);
+
+    // Check if prepareParamsWithBtcAndBuToCheckIfItIsInRollout was not called
+    expect(component.prepareParamsWithBtcAndBuToCheckIfItIsInRollout).not.toHaveBeenCalled();
+  });
+});
