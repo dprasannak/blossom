@@ -1,0 +1,118 @@
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { YourComponent } from './your-component';
+import { DataService } from './data.service'; // Adjust the path to your service
+import { of, Subject } from 'rxjs';
+
+describe('YourComponent', () => {
+  let component: YourComponent;
+  let fixture: ComponentFixture<YourComponent>;
+  let dataService: jasmine.SpyObj<DataService>;
+
+  beforeEach(() => {
+    const dataServiceSpy = jasmine.createSpyObj('DataService', ['getIsBtcInRollout', 'setIsBtcInRollout']);
+
+    TestBed.configureTestingModule({
+      declarations: [YourComponent],
+      providers: [
+        { provide: DataService, useValue: dataServiceSpy }
+      ]
+    });
+
+    fixture = TestBed.createComponent(YourComponent);
+    component = fixture.componentInstance;
+    dataService = TestBed.inject(DataService) as jasmine.SpyObj<DataService>;
+
+    component.destroy$ = new Subject();
+    component.addBillingForm = new FormGroup({
+      statementBill: new FormControl('someValue')
+    });
+
+    fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    component.destroy$.next();
+    component.destroy$.complete();
+  });
+
+  it('should use default BTC and BU if parameters are null or undefined', () => {
+    // Mock default methods
+    spyOn(component, 'getBtcFromEditScreen').and.returnValue(['DefaultBTC']);
+    spyOn(component, 'getBuFromEditScreen').and.returnValue(['DefaultBU']);
+
+    // Mock service method
+    dataService.getIsBtcInRollout.and.returnValue(of(true));
+
+    // Spy on methods to ensure they are called
+    spyOn(component, 'editStatementBill');
+    spyOn(component, 'enableStatementBill');
+
+    // Call the method
+    component.checkBtcAndBuComboIsInRollout(null, null);
+
+    // Assertions
+    expect(component.getBtcFromEditScreen).toHaveBeenCalled();
+    expect(component.getBuFromEditScreen).toHaveBeenCalled();
+    expect(dataService.getIsBtcInRollout).toHaveBeenCalledWith(['DefaultBTC'], ['DefaultBU']);
+  });
+
+  it('should update isBtcInRollout and call editStatementBill on load', () => {
+    // Mock service method
+    dataService.getIsBtcInRollout.and.returnValue(of(true));
+
+    // Initial setup
+    component.isBtcRolloutCallonLoad = true;
+    component.isBtcInRollout = false;
+
+    // Spy on methods to ensure they are called
+    spyOn(component, 'editStatementBill');
+
+    // Call the method
+    component.checkBtcAndBuComboIsInRollout('BTC001', 'BU001');
+
+    // Assertions
+    expect(component.isBtcInRollout).toBe(true);
+    expect(component.editStatementBill).toHaveBeenCalled();
+    expect(component.isBtcRolloutCallonLoad).toBe(false);
+  });
+
+  it('should update isBtcInRollout and call enableStatementBill if value changes', () => {
+    // Mock service method
+    dataService.getIsBtcInRollout.and.returnValue(of(true));
+
+    // Initial setup
+    component.isBtcRolloutCallonLoad = false;
+    component.isBtcInRollout = false;
+
+    // Spy on methods to ensure they are called
+    spyOn(component, 'enableStatementBill');
+
+    // Call the method
+    component.checkBtcAndBuComboIsInRollout('BTC001', 'BU001');
+
+    // Assertions
+    expect(component.isBtcInRollout).toBe(true);
+    expect(component.enableStatementBill).toHaveBeenCalledWith('someValue');
+    expect(dataService.setIsBtcInRollout).toHaveBeenCalledWith(true);
+  });
+
+  it('should not update isBtcInRollout if value does not change', () => {
+    // Mock service method
+    dataService.getIsBtcInRollout.and.returnValue(of(false));
+
+    // Initial setup
+    component.isBtcRolloutCallonLoad = false;
+    component.isBtcInRollout = false;
+
+    // Spy on methods to ensure they are not called
+    spyOn(component, 'enableStatementBill');
+
+    // Call the method
+    component.checkBtcAndBuComboIsInRollout('BTC001', 'BU001');
+
+    // Assertions
+    expect(component.isBtcInRollout).toBe(false);
+    expect(component.enableStatementBill).not.toHaveBeenCalled();
+    expect(dataService.setIsBtcInRollout).not.toHaveBeenCalled();
+  });
+});
