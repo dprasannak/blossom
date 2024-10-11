@@ -1,0 +1,80 @@
+callValidateApi(requestForOriginDestinationDetails: any, requestForValidate: any): Observable<string> {
+  // Get Origin Country ID and Destination Country ID
+  const originCountry$ = this.miService.getCountryId(requestForOriginDestinationDetails.shipperCountry);
+  const destinationCountry$ = this.miService.getCountryId(requestForOriginDestinationDetails.receiverCountry);
+
+  // Use forkJoin to wait for both country IDs to be fetched
+  return forkJoin([originCountry$, destinationCountry$]).pipe(
+    switchMap(([originCountry, destinationCountry]) => {
+      // Set origin and destination country IDs
+      requestForValidate.originCountryID = originCountry?.countryId;
+      requestForValidate.destinationCountryID = destinationCountry?.countryId;
+
+      // Get Origin City and Destination City IDs
+      const originCityState$ = this.miService.getCityStateIds(
+        originCountry?.countryAlpha3Code,
+        requestForOriginDestinationDetails.shipperCity,
+        requestForOriginDestinationDetails.shipperStateCode
+      );
+
+      const destinationCityState$ = this.miService.getCityStateIds(
+        destinationCountry?.countryAlpha3Code,
+        requestForOriginDestinationDetails.receiverCity,
+        requestForOriginDestinationDetails.receiverStateCode
+      );
+
+      return forkJoin([originCityState$, destinationCityState$]).pipe(
+        switchMap(([originCityStateDetails, destinationCityStateDetails]) => {
+          // Get origin and destination city IDs
+          for (const city of originCityStateDetails?.content) {
+            if (city.cityName === requestForOriginDestinationDetails.shipperCity) {
+              requestForValidate.originCityID = city.cityID;
+              break;
+            }
+          }
+
+          for (const city of destinationCityStateDetails?.content) {
+            if (city.cityName === requestForOriginDestinationDetails.receiverCity) {
+              requestForValidate.destinationCityID = city.cityID;
+              break;
+            }
+          }
+
+          // Get Location Codes for origin and destination
+          const originLocation$ = this.elasticSearchService.shipperSuggestions(requestForValidate.originLocCode.trim());
+          const destinationLocation$ = this.elasticSearchService.receiverSuggestions(requestForValidate.destinationLocCode.trim());
+
+          return forkJoin([originLocation$, destinationLocation$]).pipe(
+            switchMap(([originSuggestions, destinationSuggestions]) => {
+              this.shipper = this.formatSuggestions(originSuggestions, this.shipper);
+              this.receiver = this.formatSuggestions(destinationSuggestions, this.receiver);
+
+              if (this.shipper.length > 0) {
+                requestForValidate.originLocationID = this.shipper[0].LocationID;
+              }
+              if (this.receiver.length > 0) {
+                requestForValidate.destinationLocationID = this.receiver[0].LocationID;
+              }
+
+              // Call Validate API
+              return this.miService.getCustomerReferenceIdentifier(requestForValidate).pipe(
+                map(response => {
+                  if (response?.body) {
+                    const referenceFormatMinMaxValidLength = `${response.body.minimumValidLength}-${response.body.maximumValidLength}`;
+                    const refSampleFormat = response.body.referenceIdentifierValidExample;
+                    const refSampleFormatExample = this.convertRegularExp(response.body.referenceIdentifierRegularExpression);
+
+                    // Return the final formatted string
+                    return referenceFormatMinMaxValidLength + refSampleFormat + refSampleFormatExample;
+                  } else {
+                    return '------';
+                  }
+                })
+              );
+            })
+          );
+        })
+      );
+    })
+  );
+}
