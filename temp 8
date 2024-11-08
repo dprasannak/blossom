@@ -1,47 +1,107 @@
-it('should execute the accept block actions when confirmation is accepted', () => {
-  // Mock the form controls and the values
-  const refNumExampleControl = new FormControl('initialValue');
-  const referenceNumControl = new FormControl('initialValue');
-  const requiredRefControl = new FormControl('someValue');
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ReactiveFormsModule } from '@angular/forms';
+import { ConfirmationService } from 'primeng/api';
+import { of, throwError } from 'rxjs';
+import { YourComponent } from './your.component';
 
-  // Spy on orderDetailsFormControls to return the mocked controls
-  spyOnProperty(component, 'orderDetailsFormControls', 'get').and.returnValue({
-    controls: {
-      refNumExample: refNumExampleControl,
-      referenceNum: referenceNumControl,
-      requiredRef: requiredRefControl
-    }
-  } as any);
+describe('YourComponent', () => {
+  let component: YourComponent;
+  let fixture: ComponentFixture<YourComponent>;
+  let confirmationService: jasmine.SpyObj<ConfirmationService>;
 
-  // Set initial values for the component properties
-  component.previousReqRefType = 'oldType';
-  component.newReferenceNum = 'oldRefNum';
-  component.previousReferenceNum = 'oldPreviousRefNum';
+  beforeEach(() => {
+    const confirmationServiceSpy = jasmine.createSpyObj('ConfirmationService', ['confirm']);
 
-  // Spy on confirmationService.confirm and simulate accept
-  spyOn(confirmationService, 'confirm').and.callFake((params: any) => {
-    params.accept();
+    TestBed.configureTestingModule({
+      declarations: [YourComponent],
+      imports: [ReactiveFormsModule],
+      providers: [
+        { provide: ConfirmationService, useValue: confirmationServiceSpy }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(YourComponent);
+    component = fixture.componentInstance;
+    confirmationService = TestBed.inject(ConfirmationService) as jasmine.SpyObj<ConfirmationService>;
   });
 
-  // Spy on methods called in accept block
-  spyOn(component, 'resetSampleFormatAndExample').and.callThrough();
-  spyOn(component, 'fetchRefNumberAndFormat').and.callThrough();
+  it('should ask for confirmation when required reference type changes', () => {
+    // Arrange
+    component.previousReqRefType = 'oldType';
+    component.orderDetailsFormControls = {
+      controls: {
+        refNumExample: { reset: jasmine.createSpy() },
+        referenceNum: { reset: jasmine.createSpy(), markAsTouched: jasmine.createSpy() }
+      }
+    } as any;
+    component.newReferenceNum = 'oldValue';
+    component.previousReferenceNum = 'oldValue';
+    spyOn(component, 'resetSampleFormatAndExample');
+    spyOn(component, 'fetchRefNumberAndFormat');
 
-  // Call the method with a new event value
-  component.askConfirmationFromUser('newType');
+    // Act
+    component.askConfirmationFromUser({ requiredRef: 'newType' });
 
-  // Assertions
-  expect(confirmationService.confirm).toHaveBeenCalled();
-  expect(component.previousReqRefType).toEqual('newType');
-  expect(refNumExampleControl.value).toBeNull();
-  expect(referenceNumControl.value).toBeNull();
-  expect(component.newReferenceNum).toEqual('');
-  expect(component.previousReferenceNum).toEqual('');
-  expect(component.resetSampleFormatAndExample).toHaveBeenCalled();
-  expect(component.fetchRefNumberAndFormat).toHaveBeenCalled();
+    // Assert
+    expect(confirmationService.confirm).toHaveBeenCalledWith({
+      message: 'ReqRefTypeConfirmationConst.REQREFTYPECONFMSG',
+      header: 'Confirmation',
+      key: 'RequiredRefTypeChange',
+      accept: jasmine.any(Function),
+      reject: jasmine.any(Function)
+    });
 
-  // Check that referenceNum is marked as touched if it is not pristine
-  if (!referenceNumControl.pristine) {
-    expect(referenceNumControl.touched).toBeTrue();
-  }
+    // Verify accept callback
+    confirmationService.confirm.calls.argsFor(0)[0].accept();
+    expect(component.previousReqRefType).toBe('newType');
+    expect(component.orderDetailsFormControls.controls.refNumExample.reset).toHaveBeenCalled();
+    expect(component.orderDetailsFormControls.controls.referenceNum.reset).toHaveBeenCalled();
+    expect(component.newReferenceNum).toBe('');
+    expect(component.previousReferenceNum).toBe('');
+    expect(component.resetSampleFormatAndExample).toHaveBeenCalled();
+    expect(component.fetchRefNumberAndFormat).toHaveBeenCalled();
+    expect(component.orderDetailsFormControls.controls.referenceNum.markAsTouched).toHaveBeenCalled();
+  });
+
+  it('should restore previous reference type on reject', () => {
+    // Arrange
+    component.previousReqRefType = 'oldType';
+    component.orderDetailsFormControls = {
+      controls: {
+        requiredRef: { setValue: jasmine.createSpy() },
+        refNumExample: { reset: jasmine.createSpy() },
+        referenceNum: { reset: jasmine.createSpy(), markAsTouched: jasmine.createSpy() }
+      }
+    } as any;
+    spyOn(component, 'validateReferenceType');
+
+    // Act
+    component.askConfirmationFromUser({ requiredRef: 'newType' });
+    confirmationService.confirm.calls.argsFor(0)[0].reject();
+
+    // Assert
+    expect(component.orderDetailsFormControls.controls.requiredRef.setValue).toHaveBeenCalledWith('oldType', { emitEvent: false });
+    expect(component.validateReferenceType).toHaveBeenCalled();
+  });
+
+  it('should handle errors in the accept callback', () => {
+    // Arrange
+    component.previousReqRefType = 'oldType';
+    component.orderDetailsFormControls = {
+      controls: {
+        refNumExample: { reset: jasmine.createSpy() },
+        referenceNum: { reset: jasmine.createSpy(), markAsTouched: jasmine.createSpy() }
+      }
+    } as any;
+    spyOn(component, 'resetSampleFormatAndExample').and.throwError('Error');
+    spyOn(component, 'fetchRefNumberAndFormat').and.throwError('Error');
+    spyOn(console, 'error');
+
+    // Act
+    component.askConfirmationFromUser({ requiredRef: 'newType' });
+    confirmationService.confirm.calls.argsFor(0)[0].accept();
+
+    // Assert
+    expect(console.error).toHaveBeenCalledWith(jasmine.any(Error));
+  });
 });
