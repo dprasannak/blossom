@@ -1,0 +1,40 @@
+it('should execute the accept block actions when confirmation is accepted', () => {
+  // Mock form controls and initial values
+  component.orderDetailsFormControls = new FormGroup({
+    refNumExample: new FormControl('initialValue'),
+    referenceNum: new FormControl('initialValue'),
+    requiredRef: new FormControl('someValue')
+  });
+
+  // Set initial values
+  component.previousReqRefType = 'oldType';
+  component.newReferenceNum = 'oldRefNum';
+  component.previousReferenceNum = 'oldPreviousRefNum';
+
+  // Spy on confirmationService.confirm and simulate accept
+  spyOn(confirmationService, 'confirm').and.callFake((params: any) => {
+    params.accept();
+  });
+
+  // Spy on methods called in accept block
+  spyOn(component, 'resetSampleFormatAndExample').and.callThrough();
+  spyOn(component, 'fetchRefNumberAndFormat').and.callThrough();
+
+  // Call the method with a new event value
+  component.askConfirmationFromUser('newType');
+
+  // Assertions
+  expect(confirmationService.confirm).toHaveBeenCalled();
+  expect(component.previousReqRefType).toEqual('newType');
+  expect(component.orderDetailsFormControls.controls.refNumExample.value).toBeNull();
+  expect(component.orderDetailsFormControls.controls.referenceNum.value).toBeNull();
+  expect(component.newReferenceNum).toEqual('');
+  expect(component.previousReferenceNum).toEqual('');
+  expect(component.resetSampleFormatAndExample).toHaveBeenCalled();
+  expect(component.fetchRefNumberAndFormat).toHaveBeenCalled();
+
+  // Check that referenceNum is marked as touched if it is not pristine
+  if (!component.orderDetailsFormControls.controls.referenceNum.pristine) {
+    expect(component.orderDetailsFormControls.controls.referenceNum.touched).toBeTrue();
+  }
+});
