@@ -1,0 +1,105 @@
+import { TestBed, ComponentFixture, fakeAsync, tick } from '@angular/core/testing';
+import { Store } from '@ngrx/store';
+import { of, Subject } from 'rxjs';
+// Import your component and any relevant classes/types
+import { MyComponent } from './my.component';
+import { GetRCobfData } from './actions';  // Example import for the dispatched action
+import { MessageNotiService } from './message-noti.service'; // Example
+
+describe('MyComponent', () => {
+  let component: MyComponent;
+  let fixture: ComponentFixture<MyComponent>;
+
+  // Mocks/spies
+  let mockStore: jasmine.SpyObj<Store<any>>;
+  let mockMessageNotiService: jasmine.SpyObj<MessageNotiService>;
+  let wViewSubject: Subject<any>;
+
+  beforeEach(async () => {
+    // Create spy objects for the Store and the MessageNotiService
+    mockStore = jasmine.createSpyObj('Store', ['dispatch']);
+    mockMessageNotiService = jasmine.createSpyObj('MessageNotiService', ['setNotiMessage$']);
+
+    // Set up the testing module
+    await TestBed.configureTestingModule({
+      declarations: [MyComponent],
+      providers: [
+        { provide: Store, useValue: mockStore },
+        { provide: MessageNotiService, useValue: mockMessageNotiService },
+      ],
+    }).compileComponents();
+  });
+
+  beforeEach(() => {
+    // Create the fixture and component
+    fixture = TestBed.createComponent(MyComponent);
+    component = fixture.componentInstance;
+
+    // Create a Subject for wView$, then assign component.wView$ = wViewSubject.asObservable()
+    wViewSubject = new Subject<any>();
+    (component as any).wView$ = wViewSubject.asObservable();
+
+    // Force an initial change detection
+    fixture.detectChanges();
+  });
+
+  it('should open the new window directly if aId is present', () => {
+    spyOn(window, 'open');
+
+    // GIVEN aId is set
+    component.aId = '123';
+    // WHEN openADets is called
+    component.openADets();
+    // THEN window.open should have been called with the correct URL
+    expect(window.open).toHaveBeenCalledWith(
+      'https://nonprod.xxx.com/publica/cust/ags/123/le-hs',
+      '_blank'
+    );
+  });
+
+  it('should dispatch GetRCobfData and open new window from subscription if aId is missing but ipot is false', fakeAsync(() => {
+    spyOn(window, 'open');
+
+    // GIVEN aId is null/undefined, ipot is false, and bId is some ID
+    component.aId = null;
+    component.ipot = false;
+    component.bId = 'abc123';
+
+    // WHEN openADets is called
+    component.openADets();
+
+    // THEN store.dispatch should be called once with GetRCobfData
+    expect(mockStore.dispatch).toHaveBeenCalledWith(new GetRCobfData('abc123'));
+
+    // Simulate receiving data with an aID from the wView$ Observable
+    wViewSubject.next({ aID: 'xyz987' });
+
+    // Because we are using fakeAsync, we can flush any microtasks
+    tick();
+
+    // THEN window.open should have been called with the correct URL
+    expect(window.open).toHaveBeenCalledWith(
+      'https://nonprod.xxx.com/publica/cust/ags/xyz987/le-hs',
+      '_blank'
+    );
+  }));
+
+  it('should show notification if ipot is true', fakeAsync(() => {
+    // GIVEN ipot is true
+    component.ipot = true;
+
+    // WHEN openADets is called
+    component.openADets();
+
+    // Use fakeAsync + tick to simulate the setTimeout
+    tick(500);
+
+    // THEN messageNotiService should be called with the correct data
+    expect(mockMessageNotiService.setNotiMessage$).toHaveBeenCalledWith({
+      key: null,
+      severity: 'info',
+      summary: 's order',
+      detail: 'Cannot navigate',
+    });
+  }));
+});
