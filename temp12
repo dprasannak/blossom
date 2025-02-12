@@ -1,0 +1,59 @@
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
+
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+class TaskAssignmentServiceTest {
+
+    @InjectMocks
+    private TaskAssignmentService taskAssignmentService; // Replace with actual service class
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testExistingUserIdCondition() {
+        // Given
+        TaskAssignmentRequestDTO taskAssignmentRequestDTO = new TaskAssignmentRequestDTO();
+        taskAssignmentRequestDTO.setOldUserId("oldUser123");
+        taskAssignmentRequestDTO.setNewUserId("newUser456");
+
+        Assignment assignment = new Assignment();
+        List<TeamAssignment> teamAssignments = new ArrayList<>();
+
+        TeamAssignment teamAssignment = new TeamAssignment();
+        teamAssignment.setAssignmentTypeCode("PERSON");
+        teamAssignment.setPersonId("oldUser123"); // Existing user ID
+        teamAssignment.setTeamId(101);
+        teamAssignment.setTeamName("Team A");
+        teamAssignment.setRole(new Role("Manager")); // Assuming Role is an object with a constructor
+        teamAssignment.setExpirationTimestamp(OffsetDateTime.now());
+
+        teamAssignments.add(teamAssignment);
+        assignment.setTeamAssignment(teamAssignments);
+
+        // When
+        taskAssignmentService.updateExistingAssignment(taskAssignmentRequestDTO, assignment);
+
+        // Then
+        assertNotNull(assignment);
+        assertEquals(2, assignment.getTeamAssignment().size()); // Ensure new assignment is added
+        assertTrue(assignment.getTeamAssignment().stream()
+                .anyMatch(a -> "newUser456".equals(a.getPersonId())));
+
+        // Verify the update method is called
+        // Assuming updateTaskAssignment is a method in the same service
+        verify(taskAssignmentService, times(1)).updateTaskAssignment(assignment);
+    }
+}
